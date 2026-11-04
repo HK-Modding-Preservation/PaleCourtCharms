@@ -24,8 +24,9 @@ namespace PaleCourtCharms.Rando
         private static bool HandleButton(MenuPage landingPage, out SmallButton button)
         {
             button = Instance.pageRootButton;
-            bool enabled = PaleCourtCharms.GlobalSettings.AddCharms;
-            button.Text.color = enabled ? Colors.TRUE_COLOR : Colors.DEFAULT_COLOR;
+            bool either = PaleCourtCharms.GlobalSettings.AddCharms
+                       || PaleCourtCharms.GlobalSettings.RandomizeCosts;
+            button.Text.color = either ? Colors.TRUE_COLOR : Colors.DEFAULT_COLOR;
             return true;
         }
 
@@ -36,7 +37,7 @@ namespace PaleCourtCharms.Rando
 
         private ConnectionMenu(MenuPage landingPage)
         {
-            
+
             accessPage = new MenuPage("Pale Court Charms", landingPage);
             topLevelFactory = new MenuElementFactory<RandoSettings>(accessPage, RandoMenuProxy.RS);
             _ = new VerticalItemPanel(
@@ -47,14 +48,13 @@ namespace PaleCourtCharms.Rando
                 topLevelFactory.Elements
             );
 
-           
             pageRootButton = new SmallButton(landingPage, "Pale Court Charms");
             pageRootButton.AddHideAndShowEvent(landingPage, accessPage);
 
             landingPage.BeforeShow += () =>
             {
-                bool both = RandoMenuProxy.RS.Enabled && RandoMenuProxy.RS.RandomizeCosts;
-                pageRootButton.Text.color = both ? Colors.TRUE_COLOR : Colors.FALSE_COLOR;
+                bool either = RandoMenuProxy.RS.Enabled || RandoMenuProxy.RS.RandomizeCosts;
+                pageRootButton.Text.color = either ? Colors.TRUE_COLOR : Colors.DEFAULT_COLOR;
             };
 
             accessPage.BeforeHide += () =>
@@ -71,17 +71,24 @@ namespace PaleCourtCharms.Rando
             };
         }
 
-     
+
         public void Apply(RandoSettings settings)
         {
             topLevelFactory.SetMenuValues(settings);
+            pageRootButton.Text.color = (settings.Enabled || settings.RandomizeCosts)
+                ? Colors.TRUE_COLOR : Colors.DEFAULT_COLOR;
         }
 
-     
+
         public void Disable()
         {
-            var elem = topLevelFactory.ElementLookup[nameof(RandoSettings.Enabled)];
-            elem.SetValue(false);
+            var off = new RandoSettings { Enabled = false, RandomizeCosts = false };
+
+            PaleCourtCharms.GlobalSettings.AddCharms = false;
+            PaleCourtCharms.GlobalSettings.RandomizeCosts = false;
+
+            topLevelFactory.SetMenuValues(off);
         }
     }
 }
+
