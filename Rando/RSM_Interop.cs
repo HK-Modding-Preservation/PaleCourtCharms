@@ -23,7 +23,7 @@ namespace PaleCourtCharms.Interop
         public override bool TryProvideSettings(out RandoSettings settings)
         {
             settings = RandoSettings.FromGlobal(PaleCourtCharms.GlobalSettings);
-            return settings.Enabled;
+            return settings.Enabled || settings.RandomizeCosts;
         }
 
         public override void ReceiveSettings(RandoSettings settings)
