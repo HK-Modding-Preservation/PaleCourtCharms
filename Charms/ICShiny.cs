@@ -13,7 +13,6 @@ namespace PaleCourtCharms
     {
         public static bool placementsDone = false;
 
-        
         public static readonly string[] CharmScenes = {
             "Fungus3_48", "Room_Mansion", "Fungus2_21", "Abyss_09"
         };
@@ -21,11 +20,9 @@ namespace PaleCourtCharms
             new(49.1f, 94.4f), new(27f, 6.4f), new(114.8f, 12.4f), new(210.2f, 50.4f)
         };
 
-        
         public const string HonourName = "Kings_Honour";
         public static readonly string HonourScene = "Waterways_13";
         public static readonly Vector2 HonourPos = new(89.1f, 18.4f);
-
         public static void Hook()
         {
             On.UIManager.ContinueGame += (orig, self) =>
@@ -33,7 +30,7 @@ namespace PaleCourtCharms
                 ItemChangerMod.CreateSettingsProfile(false, false);
                 orig(self);
                 TryPlaceCharms();
-                
+
             };
             On.UIManager.StartNewGame += (orig, self, perma, bossRush) =>
             {
@@ -50,7 +47,7 @@ namespace PaleCourtCharms
 
         private static bool GetIsRando()
         {
-           
+
             return RandomizerMod.RandomizerMod.RS?.GenerationSettings != null;
         }
 
@@ -64,7 +61,7 @@ namespace PaleCourtCharms
 
             if (randoLoaded)
             {
-                
+
                 isRando = GetIsRando();
             }
 
@@ -72,92 +69,109 @@ namespace PaleCourtCharms
             if (isRando && addCharms)
                 return;
 
-    var placements = new List<AbstractPlacement>();
+            var placements = new List<AbstractPlacement>();
 
-  
-    for (int i = 0; i < PaleCourtCharms.CharmIDs.Count && i < 4; i++)
-    {
-        int id = PaleCourtCharms.CharmIDs[i];
-        string key = PaleCourtCharms.CharmKeys[i];
 
-        // Only define item if not already defined
-        if (Finder.GetItemInternal(key) == null)
-        {
-            var item = new ItemChanger.Items.CharmItem
+            for (int i = 0; i < PaleCourtCharms.CharmIDs.Count && i < 4; i++)
             {
-                charmNum = id,
-                name     = key,
-                UIDef    = new MsgUIDef
+                int id = PaleCourtCharms.CharmIDs[i];
+                string key = PaleCourtCharms.CharmKeys[i];
+
+                // Only define item if not already defined
+                if (Finder.GetItemInternal(key) == null)
                 {
-                    name     = new LanguageString("UI", $"CHARM_NAME_{id}"),
-                     shopDesc = new LanguageString("RANDO", $"SHOP_DESCRIPTION_{PaleCourtCharms.Charms[i].InternalName}"),
-                    sprite   = new EmbeddedSprite { key = key }
+                    var item = new ItemChanger.Items.CharmItem
+                    {
+                        charmNum = id,
+                        name = key,
+                        UIDef = new MsgUIDef
+                        {
+                            name = new LanguageString("UI", $"CHARM_NAME_{id}"),
+                            shopDesc = new LanguageString("RANDO", $"SHOP_DESCRIPTION_{PaleCourtCharms.Charms[i].InternalName}"),
+                            sprite = new EmbeddedSprite { key = key }
+                        }
+                    };
+                    var tag = item.AddTag<InteropTag>();
+                    tag.Message = "RandoSupplementalMetadata";
+                    tag.Properties["ModSource"] = PaleCourtCharms.Instance.GetName();
+                    tag.Properties["PoolGroup"] = "Charms";
+
+                    Finder.DefineCustomItem(item);
                 }
-            };
-            var tag = item.AddTag<InteropTag>();
-            tag.Message = "RandoSupplementalMetadata";
-            tag.Properties["ModSource"] = PaleCourtCharms.Instance.GetName();
-            tag.Properties["PoolGroup"] = "Charms";
 
-            Finder.DefineCustomItem(item);
-        }
+                // Only define location if not already defined
+                if (Finder.GetLocationInternal(key) == null)
+                {
+                    var loc = new CoordinateLocation
+                    {
+                        name = key,
+                        sceneName = CharmScenes[i],
+                        x = CharmPositions[i].x,
+                        y = CharmPositions[i].y,
+                        elevation = 0
+                    };
+                    Finder.DefineCustomLocation(loc);
+                }
 
-        // Only define location if not already defined
-        if (Finder.GetLocationInternal(key) == null)
-        {
-            var loc = new CoordinateLocation
+
+                var placement = Finder.GetLocationInternal(key).Wrap().Add(Finder.GetItemInternal(key));
+
+                if (isRando && !addCharms)
+                {
+                    //Vanilla charms placements in a rando save,this prevents wrongful tracking as randomized items in randostats
+                    var weightTag = placement.AddTag<CompletionWeightTag>();
+                    weightTag.Weight = 0;
+                }
+
+                placements.Add(placement);
+            }
+
+
+            if (Finder.GetItemInternal(HonourName) == null)
+                Finder.DefineCustomItem(new HonourUpgradeItem());
+
+
+            if (Finder.GetLocationInternal(HonourName) == null)
             {
-                name      = key,
-                sceneName = CharmScenes[i],
-                x         = CharmPositions[i].x,
-                y         = CharmPositions[i].y,
-                elevation = 0
-            };
-            Finder.DefineCustomLocation(loc);
+                var honourLoc = new CoordinateLocation
+                {
+                    name = HonourName,
+                    sceneName = HonourScene,
+                    x = HonourPos.x,
+                    y = HonourPos.y,
+                    elevation = 0
+                };
+                Finder.DefineCustomLocation(honourLoc);
+            }
+
+
+            var honourPlacement = Finder.GetLocationInternal(HonourName).Wrap().Add(Finder.GetItemInternal(HonourName));
+
+            if (isRando && !addCharms)
+            {
+                var honourWeightTag = honourPlacement.AddTag<CompletionWeightTag>();
+                honourWeightTag.Weight = 0;
+            }
+
+            placements.Add(honourPlacement);
+
+
+            ItemChangerMod.AddPlacements(placements, PlacementConflictResolution.Ignore);
+
+            placementsDone = true;
+
         }
 
-        
-        placements.Add(Finder.GetLocationInternal(key).Wrap().Add(Finder.GetItemInternal(key)));
-    }
 
-   
-    if (Finder.GetItemInternal(HonourName) == null)
-        Finder.DefineCustomItem(new HonourUpgradeItem());
-
-    
-    if (Finder.GetLocationInternal(HonourName) == null)
-    {
-        var honourLoc = new CoordinateLocation
+        public class EmbeddedSprite : ISprite
         {
-            name      = HonourName,
-            sceneName = HonourScene,
-            x         = HonourPos.x,
-            y         = HonourPos.y,
-            elevation = 0
-        };
-        Finder.DefineCustomLocation(honourLoc);
+
+            public string key;
+
+            [JsonIgnore]
+            public Sprite Value => EmbeddedSprites.Get(key);
+
+            public ISprite Clone() => (ISprite)MemberwiseClone();
+        }
     }
-
-   
-    placements.Add(Finder.GetLocationInternal(HonourName).Wrap().Add(Finder.GetItemInternal(HonourName)));
-
-   
-    ItemChangerMod.AddPlacements(placements, PlacementConflictResolution.Ignore);
-
-    placementsDone = true;
-    
-}
-
-
-         public class EmbeddedSprite : ISprite {
-        
-        public string key;
-
-        [JsonIgnore]
-        public Sprite Value => EmbeddedSprites.Get(key);
-
-        public ISprite Clone() => (ISprite)MemberwiseClone();
-    }
-    }
-}
 }
